@@ -1,0 +1,49 @@
+# file: postgresql/tasks/install_yum.yml
+
+# installation based on their instructions:
+# https://docs.timescale.com/v0.10/getting-started/installation/linux/installation-yum
+  - block:
+      - name: TimescaleDB | Download TimescaleDB RPM | yum
+        get_url: url={{ postgresql_timescaledb_url }} dest={{ postgresql_timescaledb_rpm_path }}
+        
+      - name: TimescaledDB | Install TimescaleDB RPM | yum
+        yum:
+          name: "{{ postgresql_timescaledb_rpm_path }}"
+          state: present
+
+      - name: TimescaleDB | Configure postgresql.conf
+        lineinfile:
+          dest: "{{ postgresql_conf_directory }}/postgresql.conf"
+          state: present
+          regexp: "{{ item.regexp }}"
+          line: "{{ item.guc }}"
+        with_items: "{{ postgresql_conf_default_guc }}"
+        notify:
+#    - restart postgresql
+          - restart postgresql with systemd
+
+      - name: TimescaleDB | Add extensions to the databases
+        become: yes
+        become_user: "{{ postgresql_admin_user }}"
+        postgresql_ext:
+          db: "{{ item.0.db }}"
+          login_user: "{{ postgresql_service_user }}"
+          port: "{{ postgresql_port }}"
+          name: "{{ item.1 }}"
+        with_subelements:
+          - "{{ postgresql_database_extensions }}"
+          - extensions
+        register: result 
+
+      - name: TimescaledDB | Query databases for TimescaleDB version
+        become: yes
+        become_user: "{{ postgresql_admin_user }}"
+        command: "{{ postgresql_bin_directory}}/psql {{ item.0.db }} -c 'SELECT current_database(), * FROM _timescaledb_internal.get_git_commit();'"
+        with_subelements:
+          - "{{ postgresql_database_extensions }}"
+          - extensions
+        register: select_timescaledb_versions
+
+      - name: TimescaleDB | Display TimescaleDB version for databases
+        debug: msg="{{ item.stdout_lines }}"
+        with_items: "{{ select_timescaledb_versions.results }}"

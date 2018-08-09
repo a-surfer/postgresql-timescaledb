@@ -1,0 +1,61 @@
+# file: postgresql/defaults/main.yml
+
+# Basic settings
+postgresql_version: 9.6
+
+postgresql_admin_user: "postgres"
+
+# The user/group that will run postgresql process or service
+postgresql_service_user: "{{ postgresql_admin_user }}"
+postgresql_service_group: "{{ postgresql_admin_user }}"
+postgresql_service_enabled: true
+
+postgresql_cluster_name: "main"
+postgresql_cluster_reset: false
+
+postgresql_database_owner: "{{ postgresql_admin_user }}"
+# Extensions
+postgresql_ext_timescaledb_version: "0.10.1" # be careful: check whether the postgresql/postgis versions work together
+
+# List of database extensions to be created (optional)
+postgresql_database_extensions: []
+
+# postgresql.conf
+
+#------------------------------------------------------------------------------
+# FILE LOCATIONS
+#------------------------------------------------------------------------------
+
+tmp_dir: "/tmp"
+postgresql_timescaledb_rpm_file: "timescaledb-{{ postgresql_ext_timescaledb_version }}-postgresql-{{ postgresql_version }}-0.x86_64.rpm"
+postgresql_timescaledb_rpm_path: "{{ tmp_dir }}/{{ postgresql_timescaledb_rpm_file }}"
+
+# Location of postgres configuration files here
+postgresql_conf_directory: "/etc/postgresql/{{ postgresql_version }}/{{ postgresql_cluster_name }}"
+# Use data in another directory
+postgresql_varlib_directory_name: "postgresql"
+postgresql_data_directory: "/var/lib/{{ postgresql_varlib_directory_name }}/{{ postgresql_version }}/{{ postgresql_cluster_name }}"
+postgresql_wal_directory: ""
+postgresql_pid_directory: "/var/run/postgresql"
+# If external_pid_file is not explicitly set, on extra PID file is written
+postgresql_external_pid_file: "{{ postgresql_pid_directory }}/{{ postgresql_version }}-{{ postgresql_cluster_name }}.pid"
+
+
+#------------------------------------------------------------------------------
+# CONNECTIONS AND AUTHENTICATION
+#------------------------------------------------------------------------------
+
+postgresql_port: 5432
+
+#------------------------------------------------------------------------------
+# Other config
+#------------------------------------------------------------------------------
+
+postgresql_version_terse: "{{ postgresql_version | replace('.', '') }}"
+
+postgresql_timescaledb_url: "https://timescalereleases.blob.core.windows.net/rpm/{{ postgresql_timescaledb_rpm_file }}"
+
+# PostgreSQL parameters which will appears in the postgresql.conf. Be aware, some parameters from newer postgresql versions, does not supported in the elder postrgesql versions, and may lead to the case when postgresql service does not start
+postgresql_conf_default_guc:
+  - { regexp: "^#?shared_preload_libraries = .*$", guc: "shared_preload_libraries = 'timescaledb'" }
+
